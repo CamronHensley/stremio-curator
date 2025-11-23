@@ -1,0 +1,27 @@
+{
+  "id": "org.family.staticcurator",
+  "version": "1.0.0",
+  "name": "Static Curator",
+  "description": "Daily curated movie rows for the family.",
+  "resources": [
+    "catalog"
+  ],
+  "types": [
+    "movie"
+  ],
+  "idPrefixes": [
+    "tt"
+  ],
+  "catalogs": [
+    {
+      "id": "80s_action",
+      "type": "movie",
+      "name": "80s Action Hits"
+    },
+    {
+      "id": "hidden_gems",
+      "type": "movie",
+      "name": "Highly Rated Hidden Gems"
+    }
+  ]
+}
