@@ -30,7 +30,9 @@ async function generate() {
         fs.mkdirSync(dir, { recursive: true });
     }
 
-    const catalogDefinitions = [];
+  const catalogDefinitions = [];
+// DIAGNOSTIC CHECK
+console.log(`TMDB Key Loaded: ${TMDB_KEY ? 'Yes' : 'No'}`);
 
     for (const recipe of RECIPES) {
         console.log(`   Processing Recipe: ${recipe.name}`);
