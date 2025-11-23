@@ -22,7 +22,7 @@ const RECIPES = [
 async function generate() {
     console.log("🤖 Worker started...");
 
-    // Create the folder structure Stremio expects: catalog/movie/
+    // Ensure main folder exists
     const dir = './catalog/movie';
     if (!fs.existsSync(dir)){
         fs.mkdirSync(dir, { recursive: true });
@@ -46,9 +46,22 @@ async function generate() {
                 description: m.overview
             }));
 
-            // Write specific file: catalog/movie/genre_id.json
             const fileData = { metas: metas };
+
+            // --- THE STREMIO FIX ---
+            
+            // 1. Save the standard file: catalog/movie/id.json
             fs.writeFileSync(`${dir}/${recipe.id}.json`, JSON.stringify(fileData));
+
+            // 2. Save the "skip" file: catalog/movie/id/skip=0.json
+            // We have to make a folder named after the ID first!
+            const skipDir = `${dir}/${recipe.id}`;
+            if (!fs.existsSync(skipDir)){
+                fs.mkdirSync(skipDir, { recursive: true });
+            }
+            fs.writeFileSync(`${skipDir}/skip=0.json`, JSON.stringify(fileData));
+
+            // -----------------------
 
             catalogDefinitions.push({
                 id: recipe.id,
@@ -66,7 +79,7 @@ async function generate() {
     manifest.catalogs = catalogDefinitions;
     fs.writeFileSync('manifest.json', JSON.stringify(manifest, null, 2));
 
-    console.log("✅ Update Complete! sorted files created.");
+    console.log("✅ Update Complete! Files created in both paths.");
 }
 
 generate();
