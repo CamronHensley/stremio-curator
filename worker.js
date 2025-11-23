@@ -19,10 +19,12 @@ const RECIPES = [
     }
 ];
 
+// Helper: Pause for a moment to be polite to the API
+const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
+
 async function generate() {
     console.log("🤖 Worker started...");
 
-    // Ensure main folder exists
     const dir = './catalog/movie';
     if (!fs.existsSync(dir)){
         fs.mkdirSync(dir, { recursive: true });
@@ -31,37 +33,55 @@ async function generate() {
     const catalogDefinitions = [];
 
     for (const recipe of RECIPES) {
-        console.log(`   Processing: ${recipe.name}`);
+        console.log(`   Processing Recipe: ${recipe.name}`);
         
         try {
+            // 1. Get the list of movies
             const url = `https://api.themoviedb.org/3/discover/movie?api_key=${TMDB_KEY}&language=en-US&sort_by=popularity.desc&include_adult=false${recipe.filter}`;
             const response = await axios.get(url);
-            const movies = response.data.results;
+            const rawMovies = response.data.results;
+            const validMetas = [];
 
-            const metas = movies.map(m => ({
-                id: `tt${m.id}`, 
-                type: "movie",
-                name: m.title,
-                poster: `https://image.tmdb.org/t/p/w500${m.poster_path}`,
-                description: m.overview
-            }));
+            // 2. Loop through each movie to find the Real IMDb ID
+            for (const m of rawMovies) {
+                try {
+                    // Ask TMDB for external IDs
+                    const detailsUrl = `https://api.themoviedb.org/3/movie/${m.id}/external_ids?api_key=${TMDB_KEY}`;
+                    const details = await axios.get(detailsUrl);
+                    const imdbId = details.data.imdb_id;
 
-            const fileData = { metas: metas };
+                    // Only keep it if it has a valid IMDb ID
+                    if (imdbId) {
+                        validMetas.push({
+                            id: imdbId,  // Use the REAL ID (e.g., tt0093773)
+                            type: "movie",
+                            name: m.title,
+                            poster: `https://image.tmdb.org/t/p/w500${m.poster_path}`,
+                            description: m.overview
+                        });
+                        process.stdout.write("."); // Show a dot for progress
+                    }
+                    
+                    // Wait 50ms between calls to avoid rate limits
+                    await sleep(50); 
 
-            // --- THE STREMIO FIX ---
+                } catch (err) {
+                    // If one movie fails, just skip it
+                    continue;
+                }
+            }
+            console.log(" Done!");
+
+            // 3. Save the Files (Standard + Stremio Skip Path)
+            const fileData = { metas: validMetas };
             
-            // 1. Save the standard file: catalog/movie/id.json
             fs.writeFileSync(`${dir}/${recipe.id}.json`, JSON.stringify(fileData));
 
-            // 2. Save the "skip" file: catalog/movie/id/skip=0.json
-            // We have to make a folder named after the ID first!
             const skipDir = `${dir}/${recipe.id}`;
             if (!fs.existsSync(skipDir)){
                 fs.mkdirSync(skipDir, { recursive: true });
             }
             fs.writeFileSync(`${skipDir}/skip=0.json`, JSON.stringify(fileData));
-
-            // -----------------------
 
             catalogDefinitions.push({
                 id: recipe.id,
@@ -79,7 +99,7 @@ async function generate() {
     manifest.catalogs = catalogDefinitions;
     fs.writeFileSync('manifest.json', JSON.stringify(manifest, null, 2));
 
-    console.log("✅ Update Complete! Files created in both paths.");
+    console.log("✅ Update Complete! Real IMDb IDs fetched.");
 }
 
 generate();
