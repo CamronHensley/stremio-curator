@@ -4,9 +4,8 @@ const axios = require('axios');
 
 // 1. Setup
 const TMDB_KEY = process.env.TMDB_API_KEY;
-const OUTPUT_FILE = 'catalog.json';
 
-// 2. The "Recipes" - Add your custom rows here!
+// 2. The "Recipes"
 const RECIPES = [
     {
         id: "80s_action",
@@ -20,35 +19,41 @@ const RECIPES = [
     }
 ];
 
-// 3. The Worker
 async function generate() {
     console.log("🤖 Worker started...");
-    const catalogs = [];
+
+    // Create the folder structure Stremio expects: catalog/movie/
+    const dir = './catalog/movie';
+    if (!fs.existsSync(dir)){
+        fs.mkdirSync(dir, { recursive: true });
+    }
+
+    const catalogDefinitions = [];
 
     for (const recipe of RECIPES) {
         console.log(`   Processing: ${recipe.name}`);
         
         try {
-            // Fetch from TMDB
             const url = `https://api.themoviedb.org/3/discover/movie?api_key=${TMDB_KEY}&language=en-US&sort_by=popularity.desc&include_adult=false${recipe.filter}`;
             const response = await axios.get(url);
             const movies = response.data.results;
 
-            // Convert to Stremio Format
             const metas = movies.map(m => ({
-                id: `tt${m.id}`, // Note: This is a simplification. Usually needs ID conversion, but TMDB often maps well.
+                id: `tt${m.id}`, 
                 type: "movie",
                 name: m.title,
                 poster: `https://image.tmdb.org/t/p/w500${m.poster_path}`,
                 description: m.overview
             }));
 
-            catalogs.push({
+            // Write specific file: catalog/movie/genre_id.json
+            const fileData = { metas: metas };
+            fs.writeFileSync(`${dir}/${recipe.id}.json`, JSON.stringify(fileData));
+
+            catalogDefinitions.push({
                 id: recipe.id,
                 type: "movie",
-                name: recipe.name,
-                extra: [],
-                metas: metas
+                name: recipe.name
             });
 
         } catch (error) {
@@ -56,19 +61,12 @@ async function generate() {
         }
     }
 
-    // 4. Update the Manifest
+    // Update Manifest
     const manifest = require('./manifest.json');
-    manifest.catalogs = catalogs.map(c => ({
-        id: c.id,
-        type: "movie",
-        name: c.name
-    }));
+    manifest.catalogs = catalogDefinitions;
+    fs.writeFileSync('manifest.json', JSON.stringify(manifest, null, 2));
 
-    // Write Files
-    fs.writeFileSync('catalog.json', JSON.stringify(catalogs)); // The movie data
-    fs.writeFileSync('manifest.json', JSON.stringify(manifest, null, 2)); // The updated menu
-
-    console.log("✅ Update Complete! catalog.json written.");
+    console.log("✅ Update Complete! sorted files created.");
 }
 
 generate();
