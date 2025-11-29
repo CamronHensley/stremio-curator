@@ -27,7 +27,7 @@ jobs:
     - name: Run Generator
       env:
         TMDB_API_KEY: ${{ secrets.TMDB_API_KEY }}
-      run: node scripts/worker.js
+      run: node src/worker.js
 
     - name: Commit and Push Changes
       run: |

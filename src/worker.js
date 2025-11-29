@@ -5,6 +5,15 @@ const axios = require('axios');
 // 1. Setup
 const TMDB_KEY = process.env.TMDB_API_KEY;
 
+const tmdb = axios.create({
+    baseURL: 'https://api.themoviedb.org/3',
+    params: {
+        api_key: TMDB_KEY,
+        language: 'en-US'
+    }
+});
+
+
 // 2. The "Recipes"
 const RECIPES = require('./recipes.json');
 
@@ -14,9 +23,8 @@ const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 // Helper: Fetch a single IMDb ID
 async function getImdbId(tmdbId) {
     try {
-        const detailsUrl = `https://api.themoviedb.org/3/movie/${tmdbId}/external_ids?api_key=${TMDB_KEY}`;
-        const details = await axios.get(detailsUrl);
-        return details.data.imdb_id;
+        const response = await tmdb.get(`/movie/${tmdbId}/external_ids`);
+        return response.data.imdb_id;
     } catch (err) {
         // If one movie fails, just return null
         return null;
@@ -24,7 +32,7 @@ async function getImdbId(tmdbId) {
 }
 
 // Helper: Process movies in chunks to respect rate limits
-async function processInChunks(movies, chunkSize = 10, delay = 1000) {
+async function processInChunks(movies, chunkSize = 20, delay = 5000) {
     const allImdbIds = {}; // Use a map for quick lookups
     for (let i = 0; i < movies.length; i += chunkSize) {
         const chunk = movies.slice(i, i + chunkSize);
@@ -61,8 +69,7 @@ async function generate() {
         
         try {
             // 1. Get the list of movies
-            const url = `https://api.themoviedb.org/3/discover/movie?api_key=${TMDB_KEY}&language=en-US&sort_by=popularity.desc&include_adult=false${recipe.filter}`;
-            const response = await axios.get(url);
+            const response = await tmdb.get(`/discover/movie?sort_by=popularity.desc&include_adult=false${recipe.filter}`);
             const rawMovies = response.data.results;
             
             console.log(`      Found ${rawMovies.length} movies. Fetching IMDb IDs in chunks...`);
@@ -107,7 +114,7 @@ async function generate() {
     }
 
     // Update Manifest
-    const manifest = require('./manifest.json');
+    const manifest = require('../manifest.json');
     manifest.catalogs = catalogDefinitions;
     fs.writeFileSync('manifest.json', JSON.stringify(manifest, null, 2));
 
