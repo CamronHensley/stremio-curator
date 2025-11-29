@@ -33,6 +33,6 @@ jobs:
       run: |
         git config --global user.name "GitHub Action"
         git config --global user.email "action@github.com"
-        git add catalog/ manifest.json
+        git add public/catalog/ public/manifest.json
         git commit -m "Daily content refresh" || exit 0
         git push

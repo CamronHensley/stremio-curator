@@ -55,7 +55,7 @@ async function processInChunks(movies, chunkSize = 20, delay = 5000) {
 async function generate() {
     console.log("🤖 Worker started...");
 
-    const dir = './catalog/movie';
+    const dir = './public/catalog/movie';
     if (!fs.existsSync(dir)){
         fs.mkdirSync(dir, { recursive: true });
     }
@@ -114,9 +114,9 @@ async function generate() {
     }
 
     // Update Manifest
-    const manifest = require('../manifest.json');
+    const manifest = require('../public/manifest.json');
     manifest.catalogs = catalogDefinitions;
-    fs.writeFileSync('manifest.json', JSON.stringify(manifest, null, 2));
+    fs.writeFileSync('public/manifest.json', JSON.stringify(manifest, null, 2));
 
     console.log("✅ Update Complete! Real IMDb IDs fetched.");
 }
