@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Configure Static Curator</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Sortable/1.15.0/Sortable.min.js"></script>
+    <style>
+        .drag-handle { cursor: grab; }
+        .drag-handle:active { cursor: grabbing; }
+        .ghost { opacity: 0.5; background: #e2e8f0; }
+    </style>
+</head>
+<body class="bg-gray-100 min-h-screen text-gray-800 font-sans">
+    <div class="max-w-2xl mx-auto py-12 px-4">
+        <header class="text-center mb-10">
+            <h1 class="text-4xl font-bold text-indigo-600 mb-2">Static Curator</h1>
+            <p class="text-gray-600">Customize your daily movie feed.</p>
+        </header>
+
+        <div class="bg-white rounded-xl shadow-lg p-6 space-y-8">
+            <section>
+                <h2 class="text-xl font-semibold mb-3">Your TMDB API Key</h2>
+                <input type="text" id="apiKey" placeholder="Enter TMDB Read Access Token" 
+                    class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none">
+            </section>
+
+            <section>
+                <h2 class="text-xl font-semibold mb-3">Select & Reorder Rows</h2>
+                <div id="catalogList" class="space-y-2">
+                    <div class="text-center py-4 text-gray-400">Loading options...</div>
+                </div>
+            </section>
+
+            <section class="pt-4 border-t border-gray-100">
+                <button onclick="generateLink()" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-4 rounded-lg shadow">
+                    Install on Stremio
+                </button>
+            </section>
+        </div>
+
+        <div id="resultArea" class="hidden mt-6 bg-green-50 border border-green-200 rounded-lg p-4 text-center">
+            <a id="installLink" href="#" class="inline-block bg-green-600 text-white px-6 py-2 rounded-full font-bold hover:bg-green-700">Click to Install</a>
+        </div>
+    </div>
+
+<script>
+    async function loadOptions() {
+        try {
+            const response = await fetch('/catalog_options.json');
+            if (!response.ok) throw new Error("Could not load options");
+            const catalogs = await response.json();
+            renderList(catalogs);
+        } catch (e) {
+            renderList([
+                {id: "new_releases", name: "New & Hot"},
+                {id: "hidden_gems", name: "Hidden Gems"}
+            ]);
+        }
+    }
+
+    function renderList(items) {
+        const container = document.getElementById('catalogList');
+        container.innerHTML = '';
+        items.forEach(item => {
+            const div = document.createElement('div');
+            div.className = "flex items-center bg-gray-50 p-3 rounded border border-gray-200";
+            div.dataset.id = item.id;
+            div.innerHTML = `
+                <span class="drag-handle text-gray-400 mr-3 cursor-grab">☰</span>
+                <input type="checkbox" checked class="w-5 h-5 text-indigo-600 rounded mr-3">
+                <span class="flex-grow font-medium text-gray-700">${item.name}</span>
+            `;
+            container.appendChild(div);
+        });
+        new Sortable(container, { handle: '.drag-handle', ghostClass: 'ghost' });
+    }
+
+    function base64UrlEncode(str) {
+        return btoa(str).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+    }
+
+    function generateLink() {
+        const apiKey = document.getElementById('apiKey').value.trim();
+        if (!apiKey) return alert("Please enter API Key");
+
+        const container = document.getElementById('catalogList');
+        const rows = [];
+        container.querySelectorAll('div').forEach(div => {
+            if (div.querySelector('input').checked) rows.push(div.dataset.id);
+        });
+
+        const config = JSON.stringify({ key: apiKey, rows: rows });
+        const encodedConfig = base64UrlEncode(config);
+        const host = window.location.host;
+        const streamUrl = `stremio://${host}/c/${encodedConfig}/manifest.json`;
+        
+        document.getElementById('resultArea').classList.remove('hidden');
+        document.getElementById('installLink').href = streamUrl;
+    }
+    loadOptions();
+</script>
+</body>
+</html>

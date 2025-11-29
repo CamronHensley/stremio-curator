@@ -1,0 +1,32 @@
+[
+  {
+    "id": "new_releases",
+    "name": "New & Hot",
+    "type": "movie"
+  },
+  {
+    "id": "hidden_gems",
+    "name": "Highly Rated Hidden Gems",
+    "type": "movie"
+  },
+  {
+    "id": "80s_action",
+    "name": "80s Action Hits",
+    "type": "movie"
+  },
+  {
+    "id": "scifi_classics",
+    "name": "Sci-Fi Classics",
+    "type": "movie"
+  },
+  {
+    "id": "comedy_gold",
+    "name": "Comedy Gold",
+    "type": "movie"
+  },
+  {
+    "id": "horror_hits",
+    "name": "Horror Hits",
+    "type": "movie"
+  }
+]

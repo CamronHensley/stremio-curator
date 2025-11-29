@@ -1,0 +1,31 @@
+[build]
+  publish = "public"
+
+# --- HEADERS: FORCE PERMISSIONS FOR STREMIO ---
+# This allows Stremio to access your files from anywhere
+[[headers]]
+  for = "/*"
+  [headers.values]
+    Access-Control-Allow-Origin = "*"
+    Access-Control-Allow-Headers = "*"
+
+# --- REDIRECTS ---
+
+# Serve the static catalog files directly
+[[redirects]]
+  from = "/catalog/*"
+  to = "/catalog/:splat"
+  status = 200
+
+# Route the configuration page
+[[redirects]]
+  from = "/configure"
+  to = "/configure.html"
+  status = 200
+
+# Route the dynamic manifest requests to the function
+# This captures /c/{config}/manifest.json
+[[redirects]]
+  from = "/c/*"
+  to = "/.netlify/functions/manifest"
+  status = 200
