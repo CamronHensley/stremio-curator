@@ -122,3 +122,5 @@ async function generate() {
 }
 
 generate();
+
+// Force update fix for Stremio structure
