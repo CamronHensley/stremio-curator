@@ -13,12 +13,8 @@ const MANIFEST_TEMPLATE = {
 
 // Definitions used to construct the final catalog list
 const CATALOG_DEFINITIONS = {
-    "new_releases": { id: "new_releases", type: "movie", name: "New & Hot" },
-    "hidden_gems": { id: "hidden_gems", type: "movie", name: "Hidden Gems" },
     "80s_action": { id: "80s_action", type: "movie", name: "80s Action Hits" },
-    "scifi_classics": { id: "scifi_classics", type: "movie", name: "Sci-Fi Classics" },
-    "comedy_gold": { id: "comedy_gold", type: "movie", name: "Comedy Gold" },
-    "horror_hits": { id: "horror_hits", type: "movie", name: "Horror Hits" }
+    "hidden_gems": { id: "hidden_gems", type: "movie", name: "Highly Rated Hidden Gems" }
 };
 
 exports.handler = async function(event, context) {
