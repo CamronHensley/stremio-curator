@@ -5,90 +5,73 @@ const axios = require('axios');
 // 1. Setup
 const TMDB_KEY = process.env.TMDB_API_KEY;
 
-const tmdb = axios.create({
-    baseURL: 'https://api.themoviedb.org/3',
-    params: {
-        api_key: TMDB_KEY,
-        language: 'en-US'
-    }
-});
-
-
 // 2. The "Recipes"
-const RECIPES = require('./recipes.json');
+const RECIPES = [
+    {
+        id: "80s_action",
+        name: "80s Action Hits",
+        filter: "&with_genres=28&primary_release_date.gte=1980-01-01&primary_release_date.lte=1989-12-31&vote_average.gte=6.5"
+    },
+    {
+        id: "hidden_gems",
+        name: "Highly Rated Hidden Gems",
+        filter: "&vote_count.gte=100&vote_count.lte=1000&vote_average.gte=7.5"
+    }
+];
 
 // Helper: Pause for a moment to be polite to the API
 const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 
-// Helper: Fetch a single IMDb ID
-async function getImdbId(tmdbId) {
-    try {
-        const response = await tmdb.get(`/movie/${tmdbId}/external_ids`);
-        return response.data.imdb_id;
-    } catch (err) {
-        // If one movie fails, just return null
-        return null;
-    }
-}
-
-// Helper: Process movies in chunks to respect rate limits
-async function processInChunks(movies, chunkSize = 20, delay = 5000) {
-    const allImdbIds = {}; // Use a map for quick lookups
-    for (let i = 0; i < movies.length; i += chunkSize) {
-        const chunk = movies.slice(i, i + chunkSize);
-        const promises = chunk.map(m => getImdbId(m.id));
-        const chunkResults = await Promise.all(promises);
-        
-        chunk.forEach((movie, index) => {
-            if (chunkResults[index]) {
-                allImdbIds[movie.id] = chunkResults[index];
-            }
-        });
-
-        if (i + chunkSize < movies.length) {
-            await sleep(delay); // Wait before the next chunk
-        }
-    }
-    return allImdbIds;
-}
-
 async function generate() {
     console.log("🤖 Worker started...");
 
-    const dir = './public/catalog/movie';
+    const dir = './catalog/movie';
     if (!fs.existsSync(dir)){
         fs.mkdirSync(dir, { recursive: true });
     }
 
-    const catalogDefinitions = [];
-    // DIAGNOSTIC CHECK
-    console.log(`TMDB Key Loaded: ${TMDB_KEY ? 'Yes' : 'No'}`);
+  const catalogDefinitions = [];
+// DIAGNOSTIC CHECK
+console.log(`TMDB Key Loaded: ${TMDB_KEY ? 'Yes' : 'No'}`);
 
     for (const recipe of RECIPES) {
         console.log(`   Processing Recipe: ${recipe.name}`);
         
         try {
             // 1. Get the list of movies
-            const response = await tmdb.get(`/discover/movie?sort_by=popularity.desc&include_adult=false${recipe.filter}`);
+            const url = `https://api.themoviedb.org/3/discover/movie?api_key=${TMDB_KEY}&language=en-US&sort_by=popularity.desc&include_adult=false${recipe.filter}`;
+            const response = await axios.get(url);
             const rawMovies = response.data.results;
-            
-            console.log(`      Found ${rawMovies.length} movies. Fetching IMDb IDs in chunks...`);
-            const imdbIdsMap = await processInChunks(rawMovies);
-            
-            // 2. Filter movies and build metadata
-            const validMetas = rawMovies
-                .filter(m => imdbIdsMap[m.id]) // Keep only movies where we found an IMDb ID
-                .map(m => {
-                    process.stdout.write("."); // Show a dot for progress
-                    return {
-                        id: imdbIdsMap[m.id],
-                        type: "movie",
-                        name: m.title,
-                        poster: `https://image.tmdb.org/t/p/w500${m.poster_path}`,
-                        description: m.overview
-                    };
-                });
-            
+            const validMetas = [];
+
+            // 2. Loop through each movie to find the Real IMDb ID
+            for (const m of rawMovies) {
+                try {
+                    // Ask TMDB for external IDs
+                    const detailsUrl = `https://api.themoviedb.org/3/movie/${m.id}/external_ids?api_key=${TMDB_KEY}`;
+                    const details = await axios.get(detailsUrl);
+                    const imdbId = details.data.imdb_id;
+
+                    // Only keep it if it has a valid IMDb ID
+                    if (imdbId) {
+                        validMetas.push({
+                            id: imdbId,  // Use the REAL ID (e.g., tt0093773)
+                            type: "movie",
+                            name: m.title,
+                            poster: `https://image.tmdb.org/t/p/w500${m.poster_path}`,
+                            description: m.overview
+                        });
+                        process.stdout.write("."); // Show a dot for progress
+                    }
+                    
+                    // Wait 50ms between calls to avoid rate limits
+                    await sleep(50); 
+
+                } catch (err) {
+                    // If one movie fails, just skip it
+                    continue;
+                }
+            }
             console.log(" Done!");
 
             // 3. Save the Files (Standard + Stremio Skip Path)
@@ -122,5 +105,3 @@ async function generate() {
 }
 
 generate();
-
-// Force update fix for Stremio structure
